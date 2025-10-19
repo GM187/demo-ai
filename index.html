@@ -1,551 +1,681 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VoiceFlow AI - Real-time Voice Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
-        
-        .message {
-            animation: fadeIn 0.3s ease-out;
+      }
+
+      .message {
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      .voice-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+      }
+
+      .voice-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      .voice-card.selected {
+        border-color: #4f46e5 !important;
+        background-color: #eef2ff !important;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+      }
+
+      .recording-pulse {
+        animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
         }
-        
-        .voice-card {
-            transition: all 0.3s ease;
-            cursor: pointer;
+        50% {
+          opacity: 0.6;
         }
-        
-        .voice-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      }
+
+      .gradient-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .chat-scroll {
+        scroll-behavior: smooth;
+      }
+
+      .visualizer-bar {
+        animation: visualize 0.8s ease-in-out infinite;
+      }
+
+      .visualizer-bar:nth-child(2) {
+        animation-delay: 0.1s;
+      }
+      .visualizer-bar:nth-child(3) {
+        animation-delay: 0.2s;
+      }
+      .visualizer-bar:nth-child(4) {
+        animation-delay: 0.3s;
+      }
+      .visualizer-bar:nth-child(5) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes visualize {
+        0%,
+        100% {
+          height: 8px;
         }
-        
-        .voice-card.selected {
-            border-color: #4f46e5 !important;
-            background-color: #eef2ff !important;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        50% {
+          height: 32px;
         }
-        
-        .recording-pulse {
-            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-        
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .chat-scroll {
-            scroll-behavior: smooth;
-        }
-        
-        .visualizer-bar {
-            animation: visualize 0.8s ease-in-out infinite;
-        }
-        
-        .visualizer-bar:nth-child(2) { animation-delay: 0.1s; }
-        .visualizer-bar:nth-child(3) { animation-delay: 0.2s; }
-        .visualizer-bar:nth-child(4) { animation-delay: 0.3s; }
-        .visualizer-bar:nth-child(5) { animation-delay: 0.4s; }
-        
-        @keyframes visualize {
-            0%, 100% { height: 8px; }
-            50% { height: 32px; }
-        }
-        
-        #chatContainer {
-            height: calc(100vh - 420px);
-            min-height: 400px;
-        }
+      }
+
+      #chatContainer {
+        height: calc(100vh - 420px);
+        min-height: 400px;
+      }
     </style>
-</head>
-<body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+  </head>
+  <body class="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
     <!-- Header -->
     <div class="bg-white shadow-md border-b border-gray-200">
-        <div class="container mx-auto px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <span class="text-2xl">🎙️</span>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold gradient-text">VoiceFlow AI</h1>
-                        <p class="text-sm text-gray-500">Your Intelligent Voice Assistant</p>
-                    </div>
-                </div>
-                <div id="status" class="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600">
-                    Disconnected
-                </div>
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div
+              class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg"
+            >
+              <span class="text-2xl">🎙️</span>
             </div>
+            <div>
+              <h1 class="text-2xl font-bold gradient-text">Einstain-AI</h1>
+              <p class="text-sm text-gray-500">
+                Your Intelligent Voice Assistant
+              </p>
+            </div>
+          </div>
+          <div
+            id="status"
+            class="px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600"
+          >
+            Disconnected
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- Main Content -->
     <div class="flex-1 container mx-auto px-6 py-6">
-        <div class="grid grid-cols-12 gap-6 h-full">
-            <!-- Left Sidebar -->
-            <div class="col-span-12 lg:col-span-3 space-y-4">
-                <!-- Connection Settings -->
-                <div class="bg-white rounded-xl shadow-md p-5 border border-gray-200">
-                    <h3 class="text-base font-bold text-gray-800 mb-3 flex items-center">
-                        <span class="mr-2">🔌</span> Connection
-                    </h3>
-                    <div class="space-y-3">
-                        <input type="text" id="apiUrl" value="http://localhost:8000" 
-                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
-                        <button id="connectBtn" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2.5 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md">
-                            🔌 Connect
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Voice Selection -->
-                <div class="bg-white rounded-xl shadow-md p-5 border border-gray-200">
-                    <h3 class="text-base font-bold text-gray-800 mb-3 flex items-center">
-                        <span class="mr-2">🎤</span> Select Voice
-                    </h3>
-                    <div id="voiceCards" class="space-y-2">
-                        <!-- Voice cards will be inserted here -->
-                    </div>
-                </div>
-
-                <!-- Recording Controls -->
-                <div class="bg-white rounded-xl shadow-md p-5 border border-gray-200">
-                    <h3 class="text-base font-bold text-gray-800 mb-3 flex items-center">
-                        <span class="mr-2">🎧</span> Audio Input
-                    </h3>
-                    <div class="space-y-2">
-                        <button id="recordBtn" disabled class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold py-2.5 rounded-lg hover:from-red-600 hover:to-pink-600 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
-                            🎤 Start Recording
-                        </button>
-                        <label class="block w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold py-2.5 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md cursor-pointer text-center">
-                            📁 Upload Audio
-                            <input type="file" id="audioFile" accept="audio/*" class="hidden">
-                        </label>
-                    </div>
-                    <div id="visualizer" class="hidden flex justify-center items-end space-x-1 mt-4 h-10">
-                        <div class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"></div>
-                        <div class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"></div>
-                        <div class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"></div>
-                        <div class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"></div>
-                        <div class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"></div>
-                    </div>
-                </div>
+      <div class="grid grid-cols-12 gap-6 h-full">
+        <!-- Left Sidebar -->
+        <div class="col-span-12 lg:col-span-3 space-y-4">
+          <!-- Connection Settings -->
+          <div class="bg-white rounded-xl shadow-md p-5 border border-gray-200">
+            <h3
+              class="text-base font-bold text-gray-800 mb-3 flex items-center"
+            >
+              <span class="mr-2">🔌</span> Connection
+            </h3>
+            <div class="space-y-3">
+              <input
+                type="text"
+                id="apiUrl"
+                value="http://localhost:8000"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+              <button
+                id="connectBtn"
+                class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-2.5 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md"
+              >
+                🔌 Connect
+              </button>
             </div>
+          </div>
 
-            <!-- Main Chat Area -->
-            <div class="col-span-12 lg:col-span-9 flex flex-col">
-                <div class="bg-white rounded-xl shadow-md border border-gray-200 flex flex-col h-full">
-                    <!-- Chat Messages -->
-                    <div id="chatContainer" class="flex-1 overflow-y-auto p-5 space-y-3 chat-scroll">
-                        <div class="flex items-start space-x-3">
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0">
-                                AI
-                            </div>
-                            <div class="flex-1 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl rounded-tl-sm p-4 shadow-sm border border-indigo-100">
-                                <p class="text-gray-800 text-sm">👋 Hi! I'm <span class="font-semibold text-indigo-600">VoiceFlow AI</span>, your intelligent voice assistant powered by Groq. You can speak, type, or upload audio files. Select a voice from the sidebar and let's chat!</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Input Area -->
-                    <div class="border-t border-gray-200 p-4 bg-gray-50 rounded-b-xl">
-                        <div class="flex items-end space-x-2">
-                            <textarea id="messageInput" rows="2" placeholder="Type your message here or use voice input..." 
-                                class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"></textarea>
-                            <button id="sendBtn" class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-4 py-2 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md whitespace-nowrap">
-                                📤 Send
-                            </button>
-                            <button id="speakBtn" class="bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-md whitespace-nowrap">
-                                🔊 Speak
-                            </button>
-                            <button id="clearBtn" class="bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold px-4 py-2 rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all shadow-md whitespace-nowrap">
-                                🗑️ Clear
-                            </button>
-                        </div>
-                    </div>
-                </div>
+          <!-- Voice Selection -->
+          <div class="bg-white rounded-xl shadow-md p-5 border border-gray-200">
+            <h3
+              class="text-base font-bold text-gray-800 mb-3 flex items-center"
+            >
+              <span class="mr-2">🎤</span> Select Voice
+            </h3>
+            <div id="voiceCards" class="space-y-2">
+              <!-- Voice cards will be inserted here -->
             </div>
+          </div>
+
+          <!-- Recording Controls -->
+          <div class="bg-white rounded-xl shadow-md p-5 border border-gray-200">
+            <h3
+              class="text-base font-bold text-gray-800 mb-3 flex items-center"
+            >
+              <span class="mr-2">🎧</span> Audio Input
+            </h3>
+            <div class="space-y-2">
+              <button
+                id="recordBtn"
+                disabled
+                class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white font-semibold py-2.5 rounded-lg hover:from-red-600 hover:to-pink-600 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                🎤 Start Recording
+              </button>
+              <label
+                class="block w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold py-2.5 rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all shadow-md cursor-pointer text-center"
+              >
+                📁 Upload Audio
+                <input
+                  type="file"
+                  id="audioFile"
+                  accept="audio/*"
+                  class="hidden"
+                />
+              </label>
+            </div>
+            <div
+              id="visualizer"
+              class="hidden flex justify-center items-end space-x-1 mt-4 h-10"
+            >
+              <div
+                class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"
+              ></div>
+              <div
+                class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"
+              ></div>
+              <div
+                class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"
+              ></div>
+              <div
+                class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"
+              ></div>
+              <div
+                class="visualizer-bar w-1 bg-gradient-to-t from-red-500 to-pink-500 rounded-full"
+              ></div>
+            </div>
+          </div>
         </div>
+
+        <!-- Main Chat Area -->
+        <div class="col-span-12 lg:col-span-9 flex flex-col">
+          <div
+            class="bg-white rounded-xl shadow-md border border-gray-200 flex flex-col h-full"
+          >
+            <!-- Chat Messages -->
+            <div
+              id="chatContainer"
+              class="flex-1 overflow-y-auto p-5 space-y-3 chat-scroll"
+            >
+              <div class="flex items-start space-x-3">
+                <div
+                  class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0"
+                >
+                  AI
+                </div>
+                <div
+                  class="flex-1 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl rounded-tl-sm p-4 shadow-sm border border-indigo-100"
+                >
+                  <p class="text-gray-800 text-sm">
+                    👋 Hi! I'm
+                    <span class="font-semibold text-indigo-600"
+                      >VoiceFlow AI</span
+                    >, your intelligent voice assistant powered by Groq. You can
+                    speak, type, or upload audio files. Select a voice from the
+                    sidebar and let's chat!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t border-gray-200 p-4 bg-gray-50 rounded-b-xl">
+              <div class="flex items-end space-x-2">
+                <textarea
+                  id="messageInput"
+                  rows="2"
+                  placeholder="Type your message here or use voice input..."
+                  class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                ></textarea>
+                <button
+                  id="sendBtn"
+                  class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold px-4 py-2 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md whitespace-nowrap"
+                >
+                  📤 Send
+                </button>
+                <button
+                  id="speakBtn"
+                  class="bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold px-4 py-2 rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all shadow-md whitespace-nowrap"
+                >
+                  🔊 Speak
+                </button>
+                <button
+                  id="clearBtn"
+                  class="bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold px-4 py-2 rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all shadow-md whitespace-nowrap"
+                >
+                  🗑️ Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
-        let ws = null;
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let isRecording = false;
-        let sessionId = 'session_' + Date.now();
-        let conversationHistory = [];
-        let selectedVoice = null;
-        let voices = {};
+      let ws = null;
+      let mediaRecorder = null;
+      let audioChunks = [];
+      let isRecording = false;
+      let sessionId = "session_" + Date.now();
+      let conversationHistory = [];
+      let selectedVoice = null;
+      let voices = {};
 
-        const elements = {
-            apiUrl: document.getElementById('apiUrl'),
-            connectBtn: document.getElementById('connectBtn'),
-            recordBtn: document.getElementById('recordBtn'),
-            audioFile: document.getElementById('audioFile'),
-            clearBtn: document.getElementById('clearBtn'),
-            chatContainer: document.getElementById('chatContainer'),
-            messageInput: document.getElementById('messageInput'),
-            sendBtn: document.getElementById('sendBtn'),
-            speakBtn: document.getElementById('speakBtn'),
-            status: document.getElementById('status'),
-            visualizer: document.getElementById('visualizer'),
-            voiceCards: document.getElementById('voiceCards')
-        };
+      const elements = {
+        apiUrl: document.getElementById("apiUrl"),
+        connectBtn: document.getElementById("connectBtn"),
+        recordBtn: document.getElementById("recordBtn"),
+        audioFile: document.getElementById("audioFile"),
+        clearBtn: document.getElementById("clearBtn"),
+        chatContainer: document.getElementById("chatContainer"),
+        messageInput: document.getElementById("messageInput"),
+        sendBtn: document.getElementById("sendBtn"),
+        speakBtn: document.getElementById("speakBtn"),
+        status: document.getElementById("status"),
+        visualizer: document.getElementById("visualizer"),
+        voiceCards: document.getElementById("voiceCards"),
+      };
 
-        // Fetch voices from backend and initialize voice cards
-        async function initVoiceCards() {
-            try {
-                const apiBase = elements.apiUrl.value || 'http://localhost:8000';
-                const res = await fetch(apiBase + '/api/voices');
-                const data = await res.json();
-                voices = data.voices || {};
-                elements.voiceCards.innerHTML = '';
-                let firstVoice = null;
-                Object.entries(voices).forEach(([key, voice]) => {
-                    if (!firstVoice) firstVoice = key;
-                    const card = document.createElement('div');
-                    card.className = 'voice-card border-2 border-gray-200 rounded-lg p-4 mb-2 flex items-center gap-3 cursor-pointer hover:border-indigo-500';
-                    card.setAttribute('data-voice', key);
-                    card.innerHTML = `
+      // Fetch voices from backend and initialize voice cards
+      async function initVoiceCards() {
+        try {
+          const apiBase = elements.apiUrl.value || "http://localhost:8000";
+          const res = await fetch(apiBase + "/api/voices");
+          const data = await res.json();
+          voices = data.voices || {};
+          elements.voiceCards.innerHTML = "";
+          let firstVoice = null;
+          Object.entries(voices).forEach(([key, voice]) => {
+            if (!firstVoice) firstVoice = key;
+            const card = document.createElement("div");
+            card.className =
+              "voice-card border-2 border-gray-200 rounded-lg p-4 mb-2 flex items-center gap-3 cursor-pointer hover:border-indigo-500";
+            card.setAttribute("data-voice", key);
+            card.innerHTML = `
                         <span class="text-lg">🗣️</span>
                         <div>
-                            <div class="font-semibold text-gray-800">${voice.name}</div>
-                            <div class="text-xs text-gray-500">${voice.description || ''}</div>
+                            <div class="font-semibold text-gray-800">${
+                              voice.name
+                            }</div>
+                            <div class="text-xs text-gray-500">${
+                              voice.description || ""
+                            }</div>
                         </div>
                     `;
-                    card.onclick = () => selectVoice(key);
-                    elements.voiceCards.appendChild(card);
-                });
-                // Select first voice by default
-                if (firstVoice) selectVoice(firstVoice);
-            } catch (e) {
-                elements.voiceCards.innerHTML = '<div class="text-red-500">Failed to load voices</div>';
-            }
+            card.onclick = () => selectVoice(key);
+            elements.voiceCards.appendChild(card);
+          });
+          // Select first voice by default
+          if (firstVoice) selectVoice(firstVoice);
+        } catch (e) {
+          elements.voiceCards.innerHTML =
+            '<div class="text-red-500">Failed to load voices</div>';
         }
+      }
 
-        function selectVoice(voice) {
-            selectedVoice = voice;
-            // Update UI
-            document.querySelectorAll('.voice-card').forEach(card => {
-                if (card.getAttribute('data-voice') === voice) {
-                    card.classList.add('selected', 'border-indigo-500', 'bg-indigo-50');
-                } else {
-                    card.classList.remove('selected', 'border-indigo-500', 'bg-indigo-50');
-                }
-            });
-            // Send to backend via WebSocket
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ action: 'set_voice', voice: selectedVoice }));
-            }
-            updateStatus(`Voice: ${voices[voice]?.name || voice}`, 'success');
-        }
-
-        // Connect WebSocket
-        elements.connectBtn.addEventListener('click', () => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.close();
-                return;
-            }
-
-            const wsUrl = elements.apiUrl.value.replace('http', 'ws') + '/ws/' + sessionId;
-            ws = new WebSocket(wsUrl);
-
-            ws.onopen = () => {
-                (async () => {
-                    updateStatus('Connected', 'success');
-                    elements.connectBtn.textContent = '🔌 Disconnect';
-                    elements.recordBtn.disabled = false;
-                    // Ensure we have a selected voice; if not, fetch from backend
-                    if (!selectedVoice) {
-                        try {
-                            const res = await fetch(elements.apiUrl.value + '/api/voices');
-                            const data = await res.json();
-                            const first = data && data.voices ? Object.keys(data.voices)[0] : null;
-                            if (first) selectVoice(first);
-                        } catch (e) {
-                            console.warn('Failed to fetch voices on connect', e);
-                        }
-                    }
-
-                    if (selectedVoice) {
-                        ws.send(JSON.stringify({ action: 'set_voice', voice: selectedVoice }));
-                        console.log('Connected and voice set to:', selectedVoice);
-                    }
-                })();
-            };
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                handleWebSocketMessage(data);
-            };
-
-            ws.onerror = () => {
-                updateStatus('Connection error', 'error');
-            };
-
-            ws.onclose = () => {
-                updateStatus('Disconnected', 'disconnected');
-                elements.connectBtn.textContent = '🔌 Connect';
-                elements.recordBtn.disabled = true;
-            };
+      function selectVoice(voice) {
+        selectedVoice = voice;
+        // Update UI
+        document.querySelectorAll(".voice-card").forEach((card) => {
+          if (card.getAttribute("data-voice") === voice) {
+            card.classList.add("selected", "border-indigo-500", "bg-indigo-50");
+          } else {
+            card.classList.remove(
+              "selected",
+              "border-indigo-500",
+              "bg-indigo-50"
+            );
+          }
         });
+        // Send to backend via WebSocket
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({ action: "set_voice", voice: selectedVoice })
+          );
+        }
+        updateStatus(`Voice: ${voices[voice]?.name || voice}`, "success");
+      }
 
-        function handleWebSocketMessage(data) {
-            console.log('WebSocket message:', data);
-            
-            if (data.type === 'transcription') {
-                elements.messageInput.value = data.text;
-                sendMessage(data.text);
-            } else if (data.type === 'chat_chunk') {
-                appendToLastMessage(data.content);
-            } else if (data.type === 'chat_done') {
-                const streamingMessage = elements.chatContainer.querySelector('[data-streaming="true"]');
-                if (streamingMessage) {
-                    streamingMessage.removeAttribute('data-streaming');
-                }
-            } else if (data.type === 'tts_audio') {
-                console.log('Received TTS audio with voice:', selectedVoice);
-                playTTSAudio(data.audio, data.format);
-            } else if (data.type === 'tts_fallback') {
-                console.log('TTS fallback, using client-side speech');
-                speakTextClientSide(data.text);
-            } else if (data.type === 'voice_set') {
-                console.log('Voice confirmed set on backend:', data.voice);
-                updateStatus(`Voice: ${voices[data.voice]?.name || data.voice}`, 'success');
-            } else if (data.type === 'error') {
-                updateStatus('Error: ' + data.message, 'error');
-            }
+      // Connect WebSocket
+      elements.connectBtn.addEventListener("click", () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.close();
+          return;
         }
 
-        function playTTSAudio(audioBase64, format) {
-            try {
-                console.log('Playing TTS audio for voice:', selectedVoice);
-                const audioBlob = base64ToBlob(audioBase64, format || 'audio/mpeg');
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                audio.onplay = () => console.log('Audio playing with voice:', selectedVoice);
-                audio.play().catch(err => {
-                    console.error('Audio playback failed:', err);
-                    updateStatus('Audio playback failed', 'error');
-                });
-            } catch (error) {
-                console.error('TTS audio error:', error);
-                updateStatus('TTS audio error', 'error');
-            }
-        }
+        const wsUrl =
+          elements.apiUrl.value.replace("http", "ws") + "/ws/" + sessionId;
+        ws = new WebSocket(wsUrl);
 
-        function base64ToBlob(base64, mimeType) {
-            const byteCharacters = atob(base64);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            return new Blob([byteArray], { type: mimeType });
-        }
-
-        function speakTextClientSide(text) {
-            console.log('Using client-side TTS with voice:', selectedVoice);
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate = 1.0;
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
-                utterance.onstart = () => updateStatus('Speaking...', 'info');
-                utterance.onend = () => updateStatus('Connected', 'success');
-                utterance.onerror = () => updateStatus('Speech failed', 'error');
-                window.speechSynthesis.speak(utterance);
-            } else {
-                updateStatus('TTS not available', 'error');
-            }
-        }
-
-        // Recording
-        elements.recordBtn.addEventListener('click', async () => {
-            if (!isRecording) {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-                    mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
-                    mediaRecorder.onstop = async () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                        await transcribeAudio(audioBlob);
-                        stream.getTracks().forEach(track => track.stop());
-                        elements.visualizer.classList.add('hidden');
-                    };
-                    mediaRecorder.start();
-                    isRecording = true;
-                    elements.recordBtn.textContent = '⏹️ Stop Recording';
-                    elements.recordBtn.classList.add('recording-pulse');
-                    elements.visualizer.classList.remove('hidden');
-                    updateStatus('Recording...', 'info');
-                } catch (error) {
-                    updateStatus('Microphone access denied', 'error');
-                }
-            } else {
-                mediaRecorder.stop();
-                isRecording = false;
-                elements.recordBtn.textContent = '🎤 Start Recording';
-                elements.recordBtn.classList.remove('recording-pulse');
-            }
-        });
-
-        elements.audioFile.addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (file) await transcribeAudio(file);
-        });
-
-        async function transcribeAudio(audioBlob) {
-            const formData = new FormData();
-            formData.append('file', audioBlob, 'audio.wav');
-            try {
-                updateStatus('Transcribing...', 'info');
-                const response = await fetch(elements.apiUrl.value + '/api/stt', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                elements.messageInput.value = data.text;
-                updateStatus('Transcription complete', 'success');
-                sendMessage(data.text);
-            } catch (error) {
-                updateStatus('Transcription failed', 'error');
-            }
-        }
-
-        // Chat functions
-        elements.sendBtn.addEventListener('click', () => {
-            const message = elements.messageInput.value.trim();
-            if (message) {
-                sendMessage(message);
-                elements.messageInput.value = '';
-            }
-        });
-
-        elements.messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                elements.sendBtn.click();
-            }
-        });
-
-        async function sendMessage(message) {
-            addMessage(message, 'user');
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                addMessage('', 'assistant', true);
-                ws.send(JSON.stringify({ 
-                    action: 'chat', 
-                    message: message,
-                    model: 'fast'
-                }));
-            } else {
-                try {
-                    updateStatus('Sending...', 'info');
-                    const response = await fetch(elements.apiUrl.value + '/api/chat/stream', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            message: message,
-                            conversation_history: conversationHistory,
-                            model: 'fast',
-                            system_prompt: "You are VoiceFlow AI, a helpful and efficient voice assistant. Keep responses concise and to the point - aim for 2-3 sentences unless more detail is specifically requested. Be friendly, professional, and directly address the question without unnecessary elaboration."
-                        })
-                    });
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    addMessage('', 'assistant', true);
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = JSON.parse(line.slice(6));
-                                if (data.content) appendToLastMessage(data.content);
-                            }
-                        }
-                    }
-                    updateStatus('Response complete', 'success');
-                } catch (error) {
-                    updateStatus('Error: ' + error.message, 'error');
-                }
-            }
-        }
-
-        elements.speakBtn.addEventListener('click', async () => {
-            const messages = Array.from(elements.chatContainer.querySelectorAll('.message-assistant'));
-            const lastMessage = messages[messages.length - 1];
-            if (!lastMessage) {
-                updateStatus('No message to speak', 'error');
-                return;
-            }
-            const text = lastMessage.textContent.trim();
+        ws.onopen = () => {
+          (async () => {
+            updateStatus("Connected", "success");
+            elements.connectBtn.textContent = "🔌 Disconnect";
+            elements.recordBtn.disabled = false;
+            // Ensure we have a selected voice; if not, fetch from backend
             if (!selectedVoice) {
-                updateStatus('No voice selected', 'error');
-                return;
+              try {
+                const res = await fetch(elements.apiUrl.value + "/api/voices");
+                const data = await res.json();
+                const first =
+                  data && data.voices ? Object.keys(data.voices)[0] : null;
+                if (first) selectVoice(first);
+              } catch (e) {
+                console.warn("Failed to fetch voices on connect", e);
+              }
             }
-            try {
-                updateStatus('Generating speech...', 'info');
-                elements.speakBtn.disabled = true;
-                const response = await fetch(elements.apiUrl.value + '/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        text: text, 
-                        voice: selectedVoice 
-                    })
-                });
-                if (!response.ok) {
-                    speakTextClientSide(text);
-                    elements.speakBtn.disabled = false;
-                    return;
-                }
-                const audioBlob = await response.blob();
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                audio.onended = () => {
-                    updateStatus('Connected', 'success');
-                    elements.speakBtn.disabled = false;
-                };
-                audio.onerror = () => {
-                    speakTextClientSide(text);
-                    elements.speakBtn.disabled = false;
-                };
-                audio.play();
-                updateStatus('Playing audio...', 'info');
-            } catch (error) {
-                speakTextClientSide(text);
-                elements.speakBtn.disabled = false;
-            }
-        });
 
-        elements.clearBtn.addEventListener('click', () => {
-            elements.chatContainer.innerHTML = `
+            if (selectedVoice) {
+              ws.send(
+                JSON.stringify({ action: "set_voice", voice: selectedVoice })
+              );
+              console.log("Connected and voice set to:", selectedVoice);
+            }
+          })();
+        };
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        };
+
+        ws.onerror = () => {
+          updateStatus("Connection error", "error");
+        };
+
+        ws.onclose = () => {
+          updateStatus("Disconnected", "disconnected");
+          elements.connectBtn.textContent = "🔌 Connect";
+          elements.recordBtn.disabled = true;
+        };
+      });
+
+      function handleWebSocketMessage(data) {
+        console.log("WebSocket message:", data);
+
+        if (data.type === "transcription") {
+          elements.messageInput.value = data.text;
+          sendMessage(data.text);
+        } else if (data.type === "chat_chunk") {
+          appendToLastMessage(data.content);
+        } else if (data.type === "chat_done") {
+          const streamingMessage = elements.chatContainer.querySelector(
+            '[data-streaming="true"]'
+          );
+          if (streamingMessage) {
+            streamingMessage.removeAttribute("data-streaming");
+          }
+        } else if (data.type === "tts_audio") {
+          console.log("Received TTS audio with voice:", selectedVoice);
+          playTTSAudio(data.audio, data.format);
+        } else if (data.type === "tts_fallback") {
+          console.log("TTS fallback, using client-side speech");
+          speakTextClientSide(data.text);
+        } else if (data.type === "voice_set") {
+          console.log("Voice confirmed set on backend:", data.voice);
+          updateStatus(
+            `Voice: ${voices[data.voice]?.name || data.voice}`,
+            "success"
+          );
+        } else if (data.type === "error") {
+          updateStatus("Error: " + data.message, "error");
+        }
+      }
+
+      function playTTSAudio(audioBase64, format) {
+        try {
+          console.log("Playing TTS audio for voice:", selectedVoice);
+          const audioBlob = base64ToBlob(audioBase64, format || "audio/mpeg");
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audio.onplay = () =>
+            console.log("Audio playing with voice:", selectedVoice);
+          audio.play().catch((err) => {
+            console.error("Audio playback failed:", err);
+            updateStatus("Audio playback failed", "error");
+          });
+        } catch (error) {
+          console.error("TTS audio error:", error);
+          updateStatus("TTS audio error", "error");
+        }
+      }
+
+      function base64ToBlob(base64, mimeType) {
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+      }
+
+      function speakTextClientSide(text) {
+        console.log("Using client-side TTS with voice:", selectedVoice);
+        if ("speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.volume = 1.0;
+          utterance.onstart = () => updateStatus("Speaking...", "info");
+          utterance.onend = () => updateStatus("Connected", "success");
+          utterance.onerror = () => updateStatus("Speech failed", "error");
+          window.speechSynthesis.speak(utterance);
+        } else {
+          updateStatus("TTS not available", "error");
+        }
+      }
+
+      // Recording
+      elements.recordBtn.addEventListener("click", async () => {
+        if (!isRecording) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.ondataavailable = (event) =>
+              audioChunks.push(event.data);
+            mediaRecorder.onstop = async () => {
+              const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+              await transcribeAudio(audioBlob);
+              stream.getTracks().forEach((track) => track.stop());
+              elements.visualizer.classList.add("hidden");
+            };
+            mediaRecorder.start();
+            isRecording = true;
+            elements.recordBtn.textContent = "⏹️ Stop Recording";
+            elements.recordBtn.classList.add("recording-pulse");
+            elements.visualizer.classList.remove("hidden");
+            updateStatus("Recording...", "info");
+          } catch (error) {
+            updateStatus("Microphone access denied", "error");
+          }
+        } else {
+          mediaRecorder.stop();
+          isRecording = false;
+          elements.recordBtn.textContent = "🎤 Start Recording";
+          elements.recordBtn.classList.remove("recording-pulse");
+        }
+      });
+
+      elements.audioFile.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (file) await transcribeAudio(file);
+      });
+
+      async function transcribeAudio(audioBlob) {
+        const formData = new FormData();
+        formData.append("file", audioBlob, "audio.wav");
+        try {
+          updateStatus("Transcribing...", "info");
+          const response = await fetch(elements.apiUrl.value + "/api/stt", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await response.json();
+          elements.messageInput.value = data.text;
+          updateStatus("Transcription complete", "success");
+          sendMessage(data.text);
+        } catch (error) {
+          updateStatus("Transcription failed", "error");
+        }
+      }
+
+      // Chat functions
+      elements.sendBtn.addEventListener("click", () => {
+        const message = elements.messageInput.value.trim();
+        if (message) {
+          sendMessage(message);
+          elements.messageInput.value = "";
+        }
+      });
+
+      elements.messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          elements.sendBtn.click();
+        }
+      });
+
+      async function sendMessage(message) {
+        addMessage(message, "user");
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          addMessage("", "assistant", true);
+          ws.send(
+            JSON.stringify({
+              action: "chat",
+              message: message,
+              model: "fast",
+            })
+          );
+        } else {
+          try {
+            updateStatus("Sending...", "info");
+            const response = await fetch(
+              elements.apiUrl.value + "/api/chat/stream",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  message: message,
+                  conversation_history: conversationHistory,
+                  model: "fast",
+                  system_prompt:
+                    "You are VoiceFlow AI, a helpful and efficient voice assistant. Keep responses concise and to the point - aim for 2-3 sentences unless more detail is specifically requested. Be friendly, professional, and directly address the question without unnecessary elaboration.",
+                }),
+              }
+            );
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            addMessage("", "assistant", true);
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const chunk = decoder.decode(value);
+              const lines = chunk.split("\n");
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.content) appendToLastMessage(data.content);
+                }
+              }
+            }
+            updateStatus("Response complete", "success");
+          } catch (error) {
+            updateStatus("Error: " + error.message, "error");
+          }
+        }
+      }
+
+      elements.speakBtn.addEventListener("click", async () => {
+        const messages = Array.from(
+          elements.chatContainer.querySelectorAll(".message-assistant")
+        );
+        const lastMessage = messages[messages.length - 1];
+        if (!lastMessage) {
+          updateStatus("No message to speak", "error");
+          return;
+        }
+        const text = lastMessage.textContent.trim();
+        if (!selectedVoice) {
+          updateStatus("No voice selected", "error");
+          return;
+        }
+        try {
+          updateStatus("Generating speech...", "info");
+          elements.speakBtn.disabled = true;
+          const response = await fetch(elements.apiUrl.value + "/api/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: text,
+              voice: selectedVoice,
+            }),
+          });
+          if (!response.ok) {
+            speakTextClientSide(text);
+            elements.speakBtn.disabled = false;
+            return;
+          }
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audio.onended = () => {
+            updateStatus("Connected", "success");
+            elements.speakBtn.disabled = false;
+          };
+          audio.onerror = () => {
+            speakTextClientSide(text);
+            elements.speakBtn.disabled = false;
+          };
+          audio.play();
+          updateStatus("Playing audio...", "info");
+        } catch (error) {
+          speakTextClientSide(text);
+          elements.speakBtn.disabled = false;
+        }
+      });
+
+      elements.clearBtn.addEventListener("click", () => {
+        elements.chatContainer.innerHTML = `
                 <div class="flex items-start space-x-3">
                     <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0">AI</div>
                     <div class="flex-1 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl rounded-tl-sm p-4 shadow-sm border border-indigo-100">
@@ -553,72 +683,87 @@
                     </div>
                 </div>
             `;
-            conversationHistory = [];
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ action: 'clear_history' }));
-            }
-            updateStatus('Chat cleared', 'success');
-        });
-
-        function addMessage(content, role, isStreaming = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message flex items-start space-x-3 ${role === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`;
-            
-            const avatar = document.createElement('div');
-            avatar.className = `w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0 ${
-                role === 'user' 
-                    ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
-                    : 'bg-gradient-to-br from-indigo-500 to-purple-600'
-            }`;
-            avatar.textContent = role === 'user' ? 'You' : 'AI';
-            
-            const bubble = document.createElement('div');
-            bubble.className = `flex-1 rounded-2xl p-4 shadow-sm text-sm ${
-                role === 'user'
-                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-tr-sm message-user'
-                    : 'bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-tl-sm message-assistant'
-            }`;
-            bubble.textContent = content;
-            if (isStreaming) bubble.setAttribute('data-streaming', 'true');
-            
-            messageDiv.appendChild(avatar);
-            messageDiv.appendChild(bubble);
-            elements.chatContainer.appendChild(messageDiv);
-            elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
-            
-            if (role === 'user') {
-                conversationHistory.push({ role: 'user', content: content });
-            }
+        conversationHistory = [];
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ action: "clear_history" }));
         }
+        updateStatus("Chat cleared", "success");
+      });
 
-        function appendToLastMessage(content) {
-            const streamingMessage = elements.chatContainer.querySelector('[data-streaming="true"]');
-            if (streamingMessage) {
-                streamingMessage.textContent += content;
-                elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
-                const currentContent = streamingMessage.textContent;
-                if (conversationHistory.length > 0 && conversationHistory[conversationHistory.length - 1].role === 'assistant') {
-                    conversationHistory[conversationHistory.length - 1].content = currentContent;
-                } else {
-                    conversationHistory.push({ role: 'assistant', content: currentContent });
-                }
-            }
+      function addMessage(content, role, isStreaming = false) {
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message flex items-start space-x-3 ${
+          role === "user" ? "flex-row-reverse space-x-reverse" : ""
+        }`;
+
+        const avatar = document.createElement("div");
+        avatar.className = `w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-bold shadow flex-shrink-0 ${
+          role === "user"
+            ? "bg-gradient-to-br from-green-500 to-emerald-600"
+            : "bg-gradient-to-br from-indigo-500 to-purple-600"
+        }`;
+        avatar.textContent = role === "user" ? "You" : "AI";
+
+        const bubble = document.createElement("div");
+        bubble.className = `flex-1 rounded-2xl p-4 shadow-sm text-sm ${
+          role === "user"
+            ? "bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100 rounded-tr-sm message-user"
+            : "bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-tl-sm message-assistant"
+        }`;
+        bubble.textContent = content;
+        if (isStreaming) bubble.setAttribute("data-streaming", "true");
+
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(bubble);
+        elements.chatContainer.appendChild(messageDiv);
+        elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+
+        if (role === "user") {
+          conversationHistory.push({ role: "user", content: content });
         }
+      }
 
-        function updateStatus(message, type) {
-            elements.status.textContent = message;
-            const colors = {
-                success: 'bg-green-100 text-green-700 border border-green-200',
-                error: 'bg-red-100 text-red-700 border border-red-200',
-                info: 'bg-blue-100 text-blue-700 border border-blue-200',
-                disconnected: 'bg-gray-100 text-gray-600 border border-gray-200'
-            };
-            elements.status.className = `px-4 py-2 rounded-full text-sm font-medium ${colors[type] || colors.disconnected}`;
+      function appendToLastMessage(content) {
+        const streamingMessage = elements.chatContainer.querySelector(
+          '[data-streaming="true"]'
+        );
+        if (streamingMessage) {
+          streamingMessage.textContent += content;
+          elements.chatContainer.scrollTop =
+            elements.chatContainer.scrollHeight;
+          const currentContent = streamingMessage.textContent;
+          if (
+            conversationHistory.length > 0 &&
+            conversationHistory[conversationHistory.length - 1].role ===
+              "assistant"
+          ) {
+            conversationHistory[conversationHistory.length - 1].content =
+              currentContent;
+          } else {
+            conversationHistory.push({
+              role: "assistant",
+              content: currentContent,
+            });
+          }
         }
+      }
 
-    // Initialize
-    initVoiceCards();
-    updateStatus('Ready - Click Connect', 'disconnected');
+      function updateStatus(message, type) {
+        elements.status.textContent = message;
+        const colors = {
+          success: "bg-green-100 text-green-700 border border-green-200",
+          error: "bg-red-100 text-red-700 border border-red-200",
+          info: "bg-blue-100 text-blue-700 border border-blue-200",
+          disconnected: "bg-gray-100 text-gray-600 border border-gray-200",
+        };
+        elements.status.className = `px-4 py-2 rounded-full text-sm font-medium ${
+          colors[type] || colors.disconnected
+        }`;
+      }
+
+      // Initialize
+      initVoiceCards();
+      updateStatus("Ready - Click Connect", "disconnected");
     </script>
-</body>
+  </body>
 </html>
